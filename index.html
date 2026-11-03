@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>DRDO CFEES (CAFES) — Interactive 3D Animated Fire Suppression Demo | autoAbode</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body, html {
+      width: 100%; height: 100%; overflow: hidden;
+      background: radial-gradient(circle at 50% 35%, #1e293b 0%, #0f172a 75%, #020617 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #f8fafc;
+    }
+    #canvas-container {
+      width: 100vw; height: 100vh; position: relative;
+    }
+    .header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+    }
+    .header-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .title { font-size: 14px; font-weight: 800; color: #38bdf8; letter-spacing: 0.2px; }
+    .sub { font-size: 11px; color: #cbd5e1; margin-top: 2px; }
+    .status-pill {
+      margin-top: 8px;
+      padding: 7px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: 0.3px;
+      background: rgba(30, 41, 59, 0.95);
+      border: 1px solid #38bdf8;
+      color: #f8fafc;
+      transition: all 0.25s ease;
+    }
+    .loader-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(2, 6, 23, 0.88);
+      backdrop-filter: blur(6px);
+      transition: opacity 0.35s ease;
+    }
+    .loader-box {
+      background: #0f172a; border: 1px solid #334155; padding: 20px 28px;
+      border-radius: 16px; text-align: center; max-width: 320px; width: 85%;
+    }
+    .progress-bar {
+      width: 100%; height: 8px; background: #1e293b; border-radius: 99px;
+      overflow: hidden; margin-top: 12px;
+    }
+    .progress-fill {
+      height: 100%; width: 10%; background: linear-gradient(90deg, #38bdf8, #2563eb);
+      transition: width 0.15s ease;
+    }
+    .controls {
+      position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 20; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+      width: 96%; max-width: 560px;
+      background: rgba(15, 23, 42, 0.9);
+      padding: 8px 10px; border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      backdrop-filter: blur(10px);
+    }
+    .btn {
+      background: #1e293b; color: #e2e8f0; border: 1px solid #475569;
+      padding: 7px 11px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn:active, .btn.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: #38bdf8; color: #fff;
+    }
+    .btn.fire {
+      background: linear-gradient(135deg, #ea580c, #dc2626);
+      border-color: #f97316; color: #fff;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="title">DRDO CFEES — CAFES Automated Aerosol Suppression (3D Live Animation)</div>
+        <div class="sub">Transparent Ceiling • +10% White/Orange Cylinders • Motor Spin ➔ Fire/Smoke ➔ Dual Aerosol Spray</div>
+      </div>
+    </div>
+    <div class="status-pill" id="statusBanner">⚙️ LOADING 3D MOTOR LAB & CAFES ANIMATION...</div>
+  </div>
+
+  <div class="loader-overlay" id="loader">
+    <div class="loader-box">
+      <div style="font-size:15px;font-weight:800;color:#38bdf8;">Loading 3D CAFES Motor Lab...</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:4px;" id="loadPct">Initializing WebGL...</div>
+      <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+    </div>
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <div class="controls">
+    <button class="btn fire" onclick="restartCycle()">🔥 Replay Fire & Spray</button>
+    <button class="btn" onclick="setCameraView('front')">Front View</button>
+    <button class="btn" onclick="setCameraView('top')">Top View (Thru Ceiling)</button>
+    <button class="btn" onclick="setCameraView('left')">Left Cylinder</button>
+    <button class="btn" onclick="setCameraView('right')">Right Cylinder</button>
+    <button class="btn active" id="ceilBtn" onclick="toggleCeiling()">Ceiling: Transparent</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    const container = document.getElementById('canvas-container');
+    const statusBanner = document.getElementById('statusBanner');
+    const loaderEl = document.getElementById('loader');
+    const loadPct = document.getElementById('loadPct');
+    const progFill = document.getElementById('progFill');
+
+    const scene = new THREE.Scene();
+    const isPortrait = () => window.innerWidth < window.innerHeight;
+    const camera = new THREE.PerspectiveCamera(isPortrait() ? 60 : 44, window.innerWidth / window.innerHeight, 0.1, 100);
+    // Center of room in native Maya coordinates is (8.41, 1.18, 0.05)
+    const roomCenter = new THREE.Vector3(8.41, 1.18, 0.05);
+
+    function applyResponsiveCamera(view = 'front') {
+      const aspect = window.innerWidth / window.innerHeight;
+      camera.fov = aspect < 1 ? 60 : 44;
+      camera.aspect = aspect;
+      camera.updateProjectionMatrix();
+
+      if (view === 'front') {
+        if (aspect < 1) {
+          const zDist = Math.max(6.8, 3.35 / Math.max(0.35, aspect));
+          camera.position.set(8.41, 3.35, zDist);
+          controls.target.set(8.41, 1.15, -0.05);
+        } else {
+          camera.position.set(8.41, 2.55, 4.75);
+          controls.target.set(8.41, 1.15, -0.05);
+        }
+      } else if (view === 'top') {
+        const yDist = aspect < 1 ? 7.2 : 5.2;
+        camera.position.set(8.41, yDist, 1.65);
+        controls.target.set(8.41, 1.10, -0.05);
+      } else if (view === 'left') {
+        camera.position.set(9.5, 2.05, 2.4);
+        controls.target.set(7.1, 1.35, -0.25);
+      } else if (view === 'right') {
+        camera.position.set(7.3, 2.05, 2.4);
+        controls.target.set(9.7, 1.35, -0.25);
+      }
+    }
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.copy(roomCenter);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 0.8;
+    controls.maxDistance = 15;
+    applyResponsiveCamera('front');
+    controls.update();
+
+    // Rich Studio Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 1.55));
+    const dir1 = new THREE.DirectionalLight(0xffffff, 1.8);
+    dir1.position.set(12, 18, 15);
+    scene.add(dir1);
+    const dir2 = new THREE.DirectionalLight(0xe0f2fe, 1.0);
+    dir2.position.set(4, 10, -10);
+    scene.add(dir2);
+
+    // Create soft radial particle texture for Smoke, Fire & Aerosol Mist
+    function createSoftParticleTexture() {
+      const c = document.createElement('canvas');
+      c.width = 64; c.height = 64;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.4, 'rgba(255,255,255,0.7)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 64, 64);
+      return new THREE.CanvasTexture(c);
+    }
+    const particleTex = createSoftParticleTexture();
+
+    // Key Coordinates in Motor Lab:
+    // Table Center Box: (8.335, 1.085, 0.30), Top surface y = 1.25
+    // Left Extinguisher Bottom Nozzle: (6.51, 1.37, -0.73)
+    // Right Extinguisher Bottom Nozzle: (10.32, 1.37, -0.73)
+    const centerBoxPos = new THREE.Vector3(8.335, 1.24, 0.30);
+    const leftNozzlePos = new THREE.Vector3(6.51, 1.37, -0.73);
+    const rightNozzlePos = new THREE.Vector3(10.32, 1.37, -0.73);
+
+    // 1. Moving Parts on Table: Spinning Shaft, Rotor Blades & Center Box Turbine Gear
+    const spinningGroup = new THREE.Group();
+    spinningGroup.position.set(8.335, 1.10, 0.30);
+    scene.add(spinningGroup);
+
+    // Horizontal Chrome Drive Shaft connecting Left Motor -> Center Box -> Right Generator
+    const shaftGeom = new THREE.CylinderGeometry(0.032, 0.032, 1.05, 20);
+    shaftGeom.rotateZ(Math.PI / 2);
+    const shaftMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
+    const shaftMesh = new THREE.Mesh(shaftGeom, shaftMat);
+    spinningGroup.add(shaftMesh);
+
+    // High-visibility Rotating Coupling Fins & Center Box Rotor Wheel (so rotation is super clear!)
+    const finMat1 = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, metalness: 0.5, roughness: 0.3 });
+    const finMat2 = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6, roughness: 0.25 });
+    for (const xOff of [-0.32, 0.0, 0.32]) {
+      const hub = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.085, 0.085, 0.06, 16).rotateZ(Math.PI / 2),
+        xOff === 0 ? finMat2 : finMat1
+      );
+      hub.position.x = xOff;
+      spinningGroup.add(hub);
+
+      for (let b = 0; b < 4; b++) {
+        const blade = new THREE.Mesh(
+          new THREE.BoxGeometry(0.04, 0.22, 0.035),
+          b % 2 === 0 ? finMat1 : finMat2
+        );
+        blade.position.x = xOff;
+        blade.rotation.x = (b * Math.PI) / 4;
+        spinningGroup.add(blade);
+      }
+    }
+
+    // Also add a top visible spinning turbine/gear rotor right on top of the Center Box
+    const topRotorGroup = new THREE.Group();
+    topRotorGroup.position.set(8.335, 1.26, 0.26);
+    scene.add(topRotorGroup);
+    const gearRing = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24),
+      new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.3 })
+    );
+    topRotorGroup.add(gearRing);
+    for (let i = 0; i < 3; i++) {
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.20, 0.04, 0.035),
+        new THREE.MeshStandardMaterial({ color: i === 0 ? 0xef4444 : 0x38bdf8, metalness: 0.5, roughness: 0.2 })
+      );
+      bar.rotation.y = (i * Math.PI) / 3;
+      topRotorGroup.add(bar);
+    }
+
+    // 2. Blinking Red Fault Light on the Center Box + Panel Red Light + PointLight
+    const boxBeaconMat = new THREE.MeshStandardMaterial({
+      color: 0xff0000,
+      emissive: 0xff0000,
+      emissiveIntensity: 0,
+      roughness: 0.2
+    });
+    const boxBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.048, 20, 20), boxBeaconMat);
+    boxBeacon.position.set(8.335, 1.27, 0.40);
+    scene.add(boxBeacon);
+
+    const boxAlertLight = new THREE.PointLight(0xff2200, 0, 2.5);
+    boxAlertLight.position.set(8.335, 1.38, 0.38);
+    scene.add(boxAlertLight);
+
+    // 3. Detection Strobe Lights on BOTH Extinguisher Cylinders (Left & Right)
+    const cylBeaconMat = new THREE.MeshStandardMaterial({
+      color: 0xff3300,
+      emissive: 0xff3300,
+      emissiveIntensity: 0,
+      roughness: 0.15
+    });
+    const leftCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 16), cylBeaconMat);
+    leftCylBeacon.position.set(6.53, 1.62, -0.60);
+    scene.add(leftCylBeacon);
+
+    const rightCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 16), cylBeaconMat);
+    rightCylBeacon.position.set(10.30, 1.62, -0.60);
+    scene.add(rightCylBeacon);
+
+    // Bottom Nozzle Cones on both Cylinders pointing directly at Table Center Box
+    const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
+    function addAimedNozzle(startPos, targetPos) {
+      const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
+      const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.045, 0.10, 16), nozzleMat);
+      noz.position.copy(startPos);
+      noz.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
+      scene.add(noz);
+
+      // Translucent Spray Beam Cone from Cylinder Bottom to Table Center Box
+      const dist = startPos.distanceTo(targetPos);
+      const coneGeom = new THREE.ConeGeometry(0.32, dist, 24, 1, true);
+      coneGeom.translate(0, -dist / 2, 0);
+      const coneMat = new THREE.MeshBasicMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const cone = new THREE.Mesh(coneGeom, coneMat);
+      cone.position.copy(startPos);
+      cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
+      scene.add(cone);
+      return coneMat;
+    }
+    const leftSprayConeMat = addAimedNozzle(leftNozzlePos, centerBoxPos);
+    const rightSprayConeMat = addAimedNozzle(rightNozzlePos, centerBoxPos);
+
+    // 4. 3D Smoke & Fire Particle System coming out of Table Center Box
+    const SMOKE_COUNT = 160;
+    const smokeGroup = new THREE.Group();
+    scene.add(smokeGroup);
+    const smokeParticles = [];
+    for (let i = 0; i < SMOKE_COUNT; i++) {
+      const isFire = i < 55;
+      const mat = new THREE.SpriteMaterial({
+        map: particleTex,
+        color: isFire ? 0xff6600 : 0x262626,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        blending: isFire ? THREE.AdditiveBlending : THREE.NormalBlending
+      });
+      const sp = new THREE.Sprite(mat);
+      smokeGroup.add(sp);
+      smokeParticles.push({
+        sprite: sp,
+        isFire,
+        age: Math.random(),
+        speed: isFire ? (0.45 + Math.random() * 0.35) : (0.28 + Math.random() * 0.25),
+        ox: (Math.random() - 0.5) * 0.22,
+        oz: (Math.random() - 0.5) * 0.20,
+        swirl: (Math.random() - 0.5) * 2.5
+      });
+    }
+
+    // 5. Dual Aerosol Spray Particle System from Bottom of Both Cylinders onto Table Center Box
+    const SPRAY_COUNT = 260;
+    const sprayGroup = new THREE.Group();
+    scene.add(sprayGroup);
+    const sprayParticles = [];
+    for (let i = 0; i < SPRAY_COUNT; i++) {
+      const fromLeft = (i % 2 === 0);
+      const mat = new THREE.SpriteMaterial({
+        map: particleTex,
+        color: 0xf0f9ff,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const sp = new THREE.Sprite(mat);
+      sprayGroup.add(sp);
+      sprayParticles.push({
+        sprite: sp,
+        fromLeft,
+        t: Math.random(),
+        speed: 0.65 + Math.random() * 0.45,
+        spreadX: (Math.random() - 0.5) * 0.26,
+        spreadY: (Math.random() - 0.5) * 0.18,
+        spreadZ: (Math.random() - 0.5) * 0.26
+      });
+    }
+
+    // Load the Motor Lab GLB & Split Top Ceiling into Transparent Glass
+    const ceilingMeshes = [];
+    let panelRedLightMesh = null;
+    let panelGreenLightMesh = null;
+    let ceilingMode = 0; // 0 = Transparent (14%), 1 = Hidden (0%), 2 = Solid (100%)
+
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load(
+      './media/DRDO_CFEES_CAFES_FullColor_3D.glb?v=2',
+      (gltf) => {
+        const model = gltf.scene;
+        const rootNode = model.children[0];
+        if (rootNode) {
+          rootNode.matrix.identity();
+          rootNode.position.set(0, 0, 0);
+          rootNode.quaternion.identity();
+          rootNode.scale.set(1, 1, 1);
+        }
+        model.updateMatrixWorld(true);
+        const toAdd = [];
+
+        model.traverse((child) => {
+          if (!child.isMesh || !child.geometry) return;
+          child.updateMatrixWorld(true);
+
+          const mName = child.material?.name || '';
+          if (mName === 'aiStandardSurface23') panelRedLightMesh = child;
+          if (mName === 'aiStandardSurface24') panelGreenLightMesh = child;
+
+          // Make Center Box slightly translucent so spinning internal rotor is clearly visible inside!
+          if (mName === 'aiStandardSurface5') {
+            child.material = child.material.clone();
+            child.material.transparent = true;
+            child.material.opacity = 0.76;
+          }
+
+          // Make cylinder white & orange super crisp
+          if (mName === 'aiStandardSurface29') {
+            child.material = child.material.clone();
+            child.material.color.setHex(0xffffff);
+            child.material.roughness = 0.22;
+          } else if (mName === 'aiStandardSurface28') {
+            child.material = child.material.clone();
+            child.material.color.setHex(0xff5500);
+            child.material.roughness = 0.28;
+          }
+
+          // Check if mesh has ceiling vertices (y >= 2.24)
+          const geom = child.geometry.index ? child.geometry.toNonIndexed() : child.geometry.clone();
+          geom.applyMatrix4(child.matrixWorld);
+          const pos = geom.attributes.position;
+          let hasCeiling = false;
+          let hasLower = false;
+          for (let i = 0; i < pos.count; i++) {
+            if (pos.getY(i) >= 2.24) hasCeiling = true;
+            else hasLower = true;
+          }
+
+          if (hasCeiling && !hasLower) {
+            // Entire mesh is part of the top ceiling!
+            child.material = child.material.clone();
+            child.material.transparent = true;
+            child.material.opacity = 0.14;
+            child.material.depthWrite = false;
+            child.material.color.setHex(0xdbeafe);
+            ceilingMeshes.push(child);
+          } else if (hasCeiling && hasLower) {
+            // Split ceiling triangles (all 3 verts y >= 2.24) from wall/floor triangles
+            const norm = geom.attributes.normal;
+            const ceilPos = [], ceilNorm = [];
+            const wallPos = [], wallNorm = [];
+            for (let i = 0; i < pos.count; i += 3) {
+              const y0 = pos.getY(i), y1 = pos.getY(i + 1), y2 = pos.getY(i + 2);
+              const isCeil = (y0 >= 2.24 && y1 >= 2.24 && y2 >= 2.24);
+              const tp = isCeil ? ceilPos : wallPos;
+              const tn = isCeil ? ceilNorm : wallNorm;
+              for (let k = 0; k < 3; k++) {
+                tp.push(pos.getX(i + k), pos.getY(i + k), pos.getZ(i + k));
+                if (norm) tn.push(norm.getX(i + k), norm.getY(i + k), norm.getZ(i + k));
+              }
+            }
+            child.visible = false;
+
+            if (wallPos.length > 0) {
+              const wg = new THREE.BufferGeometry();
+              wg.setAttribute('position', new THREE.Float32BufferAttribute(wallPos, 3));
+              if (wallNorm.length > 0) wg.setAttribute('normal', new THREE.Float32BufferAttribute(wallNorm, 3));
+              else wg.computeVertexNormals();
+              toAdd.push(new THREE.Mesh(wg, child.material));
+            }
+            if (ceilPos.length > 0) {
+              const cg = new THREE.BufferGeometry();
+              cg.setAttribute('position', new THREE.Float32BufferAttribute(ceilPos, 3));
+              if (ceilNorm.length > 0) cg.setAttribute('normal', new THREE.Float32BufferAttribute(ceilNorm, 3));
+              else cg.computeVertexNormals();
+              const cMat = child.material.clone();
+              cMat.transparent = true;
+              cMat.opacity = 0.14;
+              cMat.depthWrite = false;
+              cMat.color.setHex(0xdbeafe);
+              const cm = new THREE.Mesh(cg, cMat);
+              ceilingMeshes.push(cm);
+              toAdd.push(cm);
+            }
+          }
+        });
+
+        scene.add(model);
+        for (const m of toAdd) scene.add(m);
+        loaderEl.style.opacity = '0';
+        setTimeout(() => { loaderEl.style.display = 'none'; }, 350);
+      },
+      (xhr) => {
+        if (xhr.total > 0) {
+          const pct = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100));
+          loadPct.textContent = pct + '% loaded';
+          progFill.style.width = pct + '%';
+        }
+      }
+    );
+
+    // 16-Second Automated 4-Stage CAFES Animation Loop
+    // 0.0 - 3.0s: Stage 1 — Motor Spinning Normal
+    // 3.0 - 6.5s: Stage 2 — Center Box Overheats -> Red Light Blinks + Smoke & Fire Erupt from Center Box
+    // 6.5 - 12.5s: Stage 3 — Both Cylinders Detect -> Blink Lights -> Spray Aerosol from Bottom Directly onto Table Center Box -> Fire/Smoke Gradually Extinguish
+    // 12.5 - 16.0s: Stage 4 — Aerosol Spray Stops & Table Fire/Smoke Completely Stopped (Green Safe Status)
+    let cycleStart = performance.now();
+    const CYCLE_DURATION = 16.0;
+
+    let currentView = 'front';
+    window.restartCycle = () => {
+      cycleStart = performance.now() - 2800; // Jump straight to Fire/Smoke & Spray!
+    };
+    window.setAnimTime = (sec) => {
+      cycleStart = performance.now() - sec * 1000;
+    };
+
+    window.toggleCeiling = () => {
+      ceilingMode = (ceilingMode + 1) % 3;
+      const btn = document.getElementById('ceilBtn');
+      for (const m of ceilingMeshes) {
+        if (ceilingMode === 0) {
+          m.visible = true;
+          m.material.transparent = true;
+          m.material.opacity = 0.14;
+          m.material.depthWrite = false;
+          btn.textContent = 'Ceiling: Transparent';
+        } else if (ceilingMode === 1) {
+          m.visible = false;
+          btn.textContent = 'Ceiling: Open (0%)';
+        } else {
+          m.visible = true;
+          m.material.transparent = false;
+          m.material.opacity = 1.0;
+          m.material.depthWrite = true;
+          btn.textContent = 'Ceiling: Solid';
+        }
+      }
+    };
+
+    window.setCameraView = (view) => {
+      currentView = view;
+      applyResponsiveCamera(view);
+      controls.update();
+    };
+
+    let lastTime = performance.now();
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      const elapsed = ((now - cycleStart) / 1000) % CYCLE_DURATION;
+
+      // Stage intensities
+      let motorSpeed = 14.0;
+      let smokeIntensity = 0.0;
+      let fireIntensity = 0.0;
+      let redBlink = false;
+      let cylBlink = false;
+      let sprayIntensity = 0.0;
+
+      if (elapsed < 3.0) {
+        // STAGE 1: Normal Motor Spin
+        motorSpeed = 16.0;
+        statusBanner.textContent = '⚙️ STAGE 1/4: MOTOR SPINNING IN CENTER BOX — NORMAL OPERATION';
+        statusBanner.style.borderColor = '#38bdf8';
+        statusBanner.style.background = 'rgba(15, 23, 42, 0.92)';
+      } else if (elapsed < 6.5) {
+        // STAGE 2: Red Light Blinks + Smoke & Fire Erupt from Table Center Box
+        motorSpeed = 8.0;
+        const p = Math.min(1, (elapsed - 3.0) / 1.5);
+        smokeIntensity = p;
+        fireIntensity = p;
+        redBlink = Math.sin(now * 0.025) > 0;
+        statusBanner.textContent = '🔥 STAGE 2/4: OVERHEAT ALARM! RED LIGHT BLINKING & SMOKE/FIRE FROM CENTER BOX';
+        statusBanner.style.borderColor = '#ef4444';
+        statusBanner.style.background = 'rgba(127, 29, 29, 0.88)';
+      } else if (elapsed < 12.5) {
+        // STAGE 3: Both Cylinders Detect -> Blink Lights -> Spray Aerosol Directly onto Table -> Fire/Smoke Stop
+        motorSpeed = 2.0;
+        redBlink = Math.sin(now * 0.025) > 0;
+        cylBlink = Math.sin(now * 0.035) > 0;
+        sprayIntensity = elapsed < 11.8 ? 1.0 : Math.max(0, (12.5 - elapsed) / 0.7);
+        // Fire dies out by t=10.5s, Smoke dies out by t=11.8s
+        fireIntensity = Math.max(0, 1.0 - (elapsed - 6.5) / 3.8);
+        smokeIntensity = Math.max(0, 1.0 - (elapsed - 6.5) / 5.0);
+        statusBanner.textContent = '🧯 STAGE 3/4: BOTH CYLINDERS DETECT FIRE • BLINKING & SPRAYING AEROSOL ONTO TABLE!';
+        statusBanner.style.borderColor = '#f97316';
+        statusBanner.style.background = 'rgba(154, 52, 18, 0.90)';
+      } else {
+        // STAGE 4: Spray Stops & Fire/Smoke Completely Stopped
+        motorSpeed = 0.0;
+        smokeIntensity = 0.0;
+        fireIntensity = 0.0;
+        sprayIntensity = 0.0;
+        statusBanner.textContent = '✅ STAGE 4/4: TABLE FIRE & SMOKE EXTINGUISHED — AEROSOL SPRAY STOPPED (SAFE)';
+        statusBanner.style.borderColor = '#10b981';
+        statusBanner.style.background = 'rgba(6, 78, 59, 0.88)';
+      }
+
+      // 1. Rotate Motor Shaft & Center Box Turbine
+      spinningGroup.rotation.x += motorSpeed * dt;
+      topRotorGroup.rotation.y += motorSpeed * dt;
+
+      // 2. Blink Red Light on Center Box & Panel
+      boxBeaconMat.emissiveIntensity = redBlink ? 3.5 : 0.1;
+      boxBeaconMat.color.setHex(redBlink ? 0xff1100 : (elapsed >= 12.5 ? 0x10b981 : 0x550000));
+      boxAlertLight.intensity = redBlink ? 3.0 : (fireIntensity * 1.8);
+      if (panelRedLightMesh && panelRedLightMesh.material) {
+        panelRedLightMesh.material.emissive = new THREE.Color(redBlink ? 0xff0000 : 0x000000);
+        panelRedLightMesh.material.emissiveIntensity = redBlink ? 2.5 : 0;
+      }
+
+      // 3. Blink Both Extinguisher Cylinder Strobe Lights
+      cylBeaconMat.emissiveIntensity = cylBlink ? 4.0 : 0.1;
+      cylBeaconMat.color.setHex(cylBlink ? 0xff4500 : (elapsed >= 12.5 ? 0x10b981 : 0x331100));
+
+      // 4. Update Smoke & Fire Particles rising from Table Center Box
+      for (const p of smokeParticles) {
+        p.age += p.speed * dt;
+        if (p.age > 1.0) p.age -= 1.0;
+
+        const activeInt = p.isFire ? fireIntensity : smokeIntensity;
+        if (activeInt <= 0.01) {
+          p.sprite.material.opacity = 0;
+          continue;
+        }
+
+        const h = p.isFire ? (p.age * 0.42) : (p.age * 0.92);
+        const spread = 1.0 + p.age * (p.isFire ? 0.6 : 2.2);
+        p.sprite.position.set(
+          centerBoxPos.x + p.ox * spread + Math.sin(now * 0.004 + p.swirl) * 0.05 * p.age,
+          centerBoxPos.y + h,
+          centerBoxPos.z + p.oz * spread + Math.cos(now * 0.004 + p.swirl) * 0.05 * p.age
+        );
+
+        const scale = p.isFire ? (0.12 + p.age * 0.18) : (0.16 + p.age * 0.42);
+        p.sprite.scale.set(scale, scale, 1);
+
+        const fade = Math.sin(p.age * Math.PI);
+        p.sprite.material.opacity = fade * activeInt * (p.isFire ? 0.9 : 0.65);
+        if (p.isFire) {
+          p.sprite.material.color.setHSL(0.04 + (1 - p.age) * 0.08, 1.0, 0.55);
+        } else {
+          // Turn dark grey smoke lighter as aerosol suppresses it
+          const lightness = sprayIntensity > 0.2 ? 0.55 : 0.18;
+          p.sprite.material.color.setHSL(0, 0, lightness);
+        }
+      }
+
+      // 5. Update Dual Aerosol Spray Streams from Bottom of Both Cylinders onto Table Center Box
+      leftSprayConeMat.opacity = sprayIntensity * 0.16;
+      rightSprayConeMat.opacity = sprayIntensity * 0.16;
+
+      for (const sp of sprayParticles) {
+        sp.t += sp.speed * dt;
+        if (sp.t > 1.0) sp.t -= 1.0;
+
+        if (sprayIntensity <= 0.01) {
+          sp.sprite.material.opacity = 0;
+          continue;
+        }
+
+        const start = sp.fromLeft ? leftNozzlePos : rightNozzlePos;
+        const x = THREE.MathUtils.lerp(start.x, centerBoxPos.x + sp.spreadX, sp.t);
+        const y = THREE.MathUtils.lerp(start.y, centerBoxPos.y - 0.05 + sp.spreadY, sp.t);
+        const z = THREE.MathUtils.lerp(start.z, centerBoxPos.z + sp.spreadZ, sp.t);
+        sp.sprite.position.set(x, y, z);
+
+        const sc = 0.08 + sp.t * 0.28;
+        sp.sprite.scale.set(sc, sc, 1);
+        sp.sprite.material.opacity = Math.sin(sp.t * Math.PI) * 0.65 * sprayIntensity;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
