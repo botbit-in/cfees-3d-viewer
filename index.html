@@ -96,7 +96,7 @@
     <div class="header-top">
       <div>
         <div class="title">DRDO CFEES — CAFES Total-Flooding Aerosol Fire Suppression (3D Live Animation)</div>
-        <div class="sub">Transparent Ceiling • 45°-Angled White/Orange Cylinders (No Black Bottom) • Bottom Discharge ➔ Total Room Flooding</div>
+        <div class="sub">Transparent Ceiling • Vertically Straight White/Orange Cylinders (No Black Bottom) • Bottom Discharge ➔ Total Room Flooding</div>
       </div>
     </div>
     <div class="status-pill" id="statusBanner">⚙️ LOADING 3D MOTOR LAB & CAFES TOTAL-FLOODING SIMULATION...</div>
@@ -116,8 +116,9 @@
     <button class="btn fire" onclick="restartCycle()">🔥 Replay Fire & Total Flooding</button>
     <button class="btn" onclick="setCameraView('front')">Front View</button>
     <button class="btn" onclick="setCameraView('top')">Top View (Thru Ceiling)</button>
-    <button class="btn" onclick="setCameraView('left')">Left 45° Cylinder</button>
-    <button class="btn" onclick="setCameraView('right')">Right 45° Cylinder</button>
+    <button class="btn" onclick="setCameraView('left')">Left Cylinder</button>
+    <button class="btn" onclick="setCameraView('right')">Right Cylinder</button>
+    <button class="btn active" id="angleBtn" onclick="toggleCylAngle()">📐 Cylinders: Vertically Straight</button>
     <button class="btn active" id="ceilBtn" onclick="toggleCeiling()">Ceiling: Transparent</button>
   </div>
 
@@ -206,15 +207,38 @@
     }
     const particleTex = createSoftParticleTexture();
 
+    // Support ?angle=straight (default: Vertically Straight) or ?angle=45 (45° Vertically-Aligned Plane) or ?angle=45fwd
+    const urlParams = new URLSearchParams(window.location.search);
+    let cylAngleMode = urlParams.get('angle') === '45' ? '45deg' : (urlParams.get('angle') === '45fwd' ? '45fwd' : 'straight');
+
     // Key Coordinates in Motor Lab:
     // Table Center Box: (8.335, 1.085, 0.30), Top surface y = 1.24
-    // Left 45°-Tilted Cylinder Pivot: (6.52, 1.62, -0.66) -> Bottom Flat Face at (6.67, 1.47, -0.61) pointing 45° down-right
-    // Right 45°-Tilted Cylinder Pivot: (10.30, 1.62, -0.66) -> Bottom Flat Face at (10.15, 1.47, -0.61) pointing 45° down-left
+    // Left Cylinder Pivot: (6.4993, 1.6217, -0.6529)
+    // Right Cylinder Pivot: (10.3125, 1.6217, -0.6529)
     const centerBoxPos = new THREE.Vector3(8.335, 1.24, 0.30);
-    const leftCylPivot = new THREE.Vector3(6.52, 1.62, -0.66);
-    const rightCylPivot = new THREE.Vector3(10.30, 1.62, -0.66);
-    const leftBottomExit = new THREE.Vector3(6.66, 1.48, -0.60);
-    const rightBottomExit = new THREE.Vector3(10.16, 1.48, -0.60);
+    const leftCylPivot = new THREE.Vector3(6.4993, 1.6217, -0.6529);
+    const rightCylPivot = new THREE.Vector3(10.3125, 1.6217, -0.6529);
+    const leftBottomExit = new THREE.Vector3(6.4993, 1.415, -0.6529);
+    const rightBottomExit = new THREE.Vector3(10.3125, 1.415, -0.6529);
+    const left45Dir = new THREE.Vector3(0.25, -0.95, 0.18).normalize();
+    const right45Dir = new THREE.Vector3(-0.25, -0.95, 0.18).normalize();
+
+    const leftCylGroup = new THREE.Group();
+    leftCylGroup.position.copy(leftCylPivot);
+    scene.add(leftCylGroup);
+
+    const rightCylGroup = new THREE.Group();
+    rightCylGroup.position.copy(rightCylPivot);
+    scene.add(rightCylGroup);
+
+    // Clean White/Silver Wall Mount Arm behind each cylinder pivot
+    const mountMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.35, roughness: 0.25 });
+    const leftMount = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.08), mountMat);
+    leftMount.position.set(6.44, 1.6217, -0.6529);
+    scene.add(leftMount);
+    const rightMount = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.08), mountMat);
+    rightMount.position.set(10.37, 1.6217, -0.6529);
+    scene.add(rightMount);
 
     // 1. Moving Parts on Table: Spinning Shaft, Rotor Blades & Center Box Turbine Gear
     const spinningGroup = new THREE.Group();
@@ -280,55 +304,72 @@
     boxAlertLight.position.set(8.335, 1.38, 0.38);
     scene.add(boxAlertLight);
 
-    // 3. Detection Indicator Lights on BOTH 45°-Angled Cylinders (Top Cap Indicator LEDs, bright orange/emerald — NO dark/black parts!)
+    // 3. Detection Indicator Lights on BOTH Cylinders (Top Cap Indicator LEDs, bright orange/emerald — NO dark/black parts!)
     const cylBeaconMat = new THREE.MeshStandardMaterial({
       color: 0xff6600,
       emissive: 0xff5500,
       emissiveIntensity: 0.45,
       roughness: 0.15
     });
-    const leftCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.032, 16, 16), cylBeaconMat);
-    leftCylBeacon.position.set(6.41, 1.73, -0.60);
-    scene.add(leftCylBeacon);
+    const leftCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 16), cylBeaconMat);
+    leftCylBeacon.position.set(0, 0.212, 0);
+    leftCylGroup.add(leftCylBeacon);
 
-    const rightCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.032, 16, 16), cylBeaconMat);
-    rightCylBeacon.position.set(10.41, 1.73, -0.60);
-    scene.add(rightCylBeacon);
+    const rightCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 16), cylBeaconMat);
+    rightCylBeacon.position.set(0, 0.212, 0);
+    rightCylGroup.add(rightCylBeacon);
 
-    // Clean White/Silver Bottom Discharge Nozzle Ring at the bottom face of each 45°-angled cylinder (ZERO black portion!)
-    const bottomNozzleMat = new THREE.MeshStandardMaterial({
+    // Soft spherical aerosol source glow right at the bottom outlet (NOT a targeted cone beam!)
+    const leftPlumeMat = new THREE.SpriteMaterial({
+      map: particleTex,
       color: 0xffffff,
-      metalness: 0.25,
-      roughness: 0.20,
-      emissive: 0xe2e8f0,
-      emissiveIntensity: 0.15
+      transparent: true,
+      opacity: 0.0,
+      depthWrite: false
     });
-    const left45Dir = new THREE.Vector3(0.707, -0.707, 0.18).normalize();
-    const right45Dir = new THREE.Vector3(-0.707, -0.707, 0.18).normalize();
+    const leftPuffSprite = new THREE.Sprite(leftPlumeMat);
+    leftPuffSprite.scale.set(0.85, 0.85, 1);
+    scene.add(leftPuffSprite);
 
-    function addWhiteBottomNozzleAndGlow(bottomExitPos, dirVec) {
-      const nozzleGeom = new THREE.CylinderGeometry(0.068, 0.074, 0.025, 24);
-      const nozzleMesh = new THREE.Mesh(nozzleGeom, bottomNozzleMat);
-      nozzleMesh.position.copy(bottomExitPos);
-      nozzleMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dirVec);
-      scene.add(nozzleMesh);
+    const rightPlumeMat = new THREE.SpriteMaterial({
+      map: particleTex,
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.0,
+      depthWrite: false
+    });
+    const rightPuffSprite = new THREE.Sprite(rightPlumeMat);
+    rightPuffSprite.scale.set(0.85, 0.85, 1);
+    scene.add(rightPuffSprite);
 
-      // Soft spherical aerosol source glow right at the 45° bottom outlet (NOT a targeted cone beam!)
-      const puffMat = new THREE.SpriteMaterial({
-        map: particleTex,
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.0,
-        depthWrite: false
-      });
-      const puffSprite = new THREE.Sprite(puffMat);
-      puffSprite.position.copy(bottomExitPos).addScaledVector(dirVec, 0.18);
-      puffSprite.scale.set(0.85, 0.85, 1);
-      scene.add(puffSprite);
-      return puffMat;
+    function applyCylinderAngle(mode) {
+      cylAngleMode = mode;
+      const btn = document.getElementById('angleBtn');
+      if (mode === 'straight') {
+        leftCylGroup.rotation.set(0, 0, 0);
+        rightCylGroup.rotation.set(0, 0, 0);
+        leftBottomExit.set(leftCylPivot.x, leftCylPivot.y - 0.205, leftCylPivot.z);
+        rightBottomExit.set(rightCylPivot.x, rightCylPivot.y - 0.205, rightCylPivot.z);
+        left45Dir.set(0.22, -0.95, 0.18).normalize();
+        right45Dir.set(-0.22, -0.95, 0.18).normalize();
+        if (btn) btn.textContent = '⬆️ Cylinders: Vertically Straight';
+      } else {
+        // 45° Angle in Vertically-Straight Wall Plane (dz = 0, zero forward skew!)
+        leftCylGroup.rotation.set(0, 0, Math.PI / 4);
+        rightCylGroup.rotation.set(0, 0, -Math.PI / 4);
+        leftBottomExit.set(leftCylPivot.x + 0.145, leftCylPivot.y - 0.145, leftCylPivot.z);
+        rightBottomExit.set(rightCylPivot.x - 0.145, rightCylPivot.y - 0.145, rightCylPivot.z);
+        left45Dir.set(0.707, -0.707, 0.15).normalize();
+        right45Dir.set(-0.707, -0.707, 0.15).normalize();
+        if (btn) btn.textContent = '📐 Cylinders: 45° Angle';
+      }
+      leftPuffSprite.position.copy(leftBottomExit).addScaledVector(left45Dir, 0.16);
+      rightPuffSprite.position.copy(rightBottomExit).addScaledVector(right45Dir, 0.16);
     }
-    const leftPlumeMat = addWhiteBottomNozzleAndGlow(leftBottomExit, left45Dir);
-    const rightPlumeMat = addWhiteBottomNozzleAndGlow(rightBottomExit, right45Dir);
+    applyCylinderAngle(cylAngleMode);
+    window.toggleCylAngle = () => {
+      applyCylinderAngle(cylAngleMode === 'straight' ? '45deg' : 'straight');
+    };
 
     // Total-Flooding Volumetric Room Fog Box (fills the ENTIRE room uniformly from floor to ceiling, wall to wall)
     const roomFogGeom = new THREE.BoxGeometry(4.06, 2.24, 3.12);
@@ -460,18 +501,13 @@
         model.updateMatrixWorld(true);
         const toAdd = [];
 
-        // Rotation matrices to tilt Left Cylinder (+45° around Z) & Right Cylinder (-45° around Z)
-        // First undo the slight 21° X tilt (+0.37 rad) and apply exact 45° (Math.PI/4 = 0.7854 rad) inward Z tilt!
-        const leftRotMat = new THREE.Matrix4()
-          .makeTranslation(leftCylPivot.x, leftCylPivot.y, leftCylPivot.z)
-          .multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 4))
-          .multiply(new THREE.Matrix4().makeRotationX(0.36))
+        // Undo the raw GLB's +22.2° (+0.388 rad) forward Z-tilt so each cylinder is 100.0% Vertically Straight (dx=0, dz=0) in its local group!
+        const leftLocalMat = new THREE.Matrix4()
+          .makeRotationX(-0.388)
           .multiply(new THREE.Matrix4().makeTranslation(-leftCylPivot.x, -leftCylPivot.y, -leftCylPivot.z));
 
-        const rightRotMat = new THREE.Matrix4()
-          .makeTranslation(rightCylPivot.x, rightCylPivot.y, rightCylPivot.z)
-          .multiply(new THREE.Matrix4().makeRotationZ(-Math.PI / 4))
-          .multiply(new THREE.Matrix4().makeRotationX(0.36))
+        const rightLocalMat = new THREE.Matrix4()
+          .makeRotationX(-0.388)
           .multiply(new THREE.Matrix4().makeTranslation(-rightCylPivot.x, -rightCylPivot.y, -rightCylPivot.z));
 
         model.traverse((child) => {
@@ -501,10 +537,10 @@
           const isRightCylPart = (cx > 10.20 && cx < 10.44 && cy > 1.35 && cy < 1.88 && cz > -0.85 && cz < -0.48);
 
           if (isLeftCylPart || isRightCylPart) {
-            // Hide both the small black bottom knob AND the dark vertical wall bracket so ONLY the clean 45° White/Orange Cylinder is visible!
+            // Hide old bracket struts (standardSurface1), small black bottom knob, and dark vertical wall bracket!
             const isSmallBottomKnob = bb.max.y < 1.44 && (bb.max.y - bb.min.y) < 0.06;
             const isDarkVerticalBracket = (bb.min.x < 6.425 || bb.max.x > 10.395) && (bb.max.x - bb.min.x < 0.06);
-            if (isSmallBottomKnob || isDarkVerticalBracket) {
+            if (mName === 'standardSurface1' || isSmallBottomKnob || isDarkVerticalBracket) {
               child.visible = false;
               return;
             }
@@ -520,11 +556,11 @@
               child.material.metalness = 0.12;
             }
 
-            // Apply 45-degree inward rotation to the entire cylinder assembly
-            geom.applyMatrix4(isLeftCylPart ? leftRotMat : rightRotMat);
+            // Align cylinder 100% vertically straight in local group space and add to leftCylGroup / rightCylGroup
+            geom.applyMatrix4(isLeftCylPart ? leftLocalMat : rightLocalMat);
             geom.computeVertexNormals();
             child.visible = false;
-            toAdd.push(new THREE.Mesh(geom, child.material));
+            (isLeftCylPart ? leftCylGroup : rightCylGroup).add(new THREE.Mesh(geom, child.material));
             return;
           }
 
