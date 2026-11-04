@@ -280,50 +280,60 @@
     boxAlertLight.position.set(8.335, 1.38, 0.38);
     scene.add(boxAlertLight);
 
-    // 3. Detection Indicator Lights on BOTH 45°-Angled Cylinders (Top Cap Indicator LEDs, NO black bottom!)
+    // 3. Detection Indicator Lights on BOTH 45°-Angled Cylinders (Top Cap Indicator LEDs, bright orange/emerald — NO dark/black parts!)
     const cylBeaconMat = new THREE.MeshStandardMaterial({
-      color: 0xff3300,
-      emissive: 0xff3300,
-      emissiveIntensity: 0,
+      color: 0xff6600,
+      emissive: 0xff5500,
+      emissiveIntensity: 0.45,
       roughness: 0.15
     });
-    const leftCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.034, 16, 16), cylBeaconMat);
-    leftCylBeacon.position.set(6.42, 1.74, -0.58);
+    const leftCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.032, 16, 16), cylBeaconMat);
+    leftCylBeacon.position.set(6.41, 1.73, -0.60);
     scene.add(leftCylBeacon);
 
-    const rightCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.034, 16, 16), cylBeaconMat);
-    rightCylBeacon.position.set(10.40, 1.74, -0.58);
+    const rightCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.032, 16, 16), cylBeaconMat);
+    rightCylBeacon.position.set(10.41, 1.73, -0.60);
     scene.add(rightCylBeacon);
 
-    // 45° Wide Dispersion Plume Cones coming out from the flat WHITE bottom of both 45°-tilted cylinders
-    function add45DegBottomPlume(bottomExitPos, dirVec) {
-      const len = 1.65;
-      const coneGeom = new THREE.ConeGeometry(0.68, len, 28, 1, true);
-      coneGeom.translate(0, -len / 2, 0);
-      const coneMat = new THREE.MeshBasicMaterial({
-        color: 0xf0f9ff,
+    // Clean White/Silver Bottom Discharge Nozzle Ring at the bottom face of each 45°-angled cylinder (ZERO black portion!)
+    const bottomNozzleMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      metalness: 0.25,
+      roughness: 0.20,
+      emissive: 0xe2e8f0,
+      emissiveIntensity: 0.15
+    });
+    const left45Dir = new THREE.Vector3(0.707, -0.707, 0.18).normalize();
+    const right45Dir = new THREE.Vector3(-0.707, -0.707, 0.18).normalize();
+
+    function addWhiteBottomNozzleAndGlow(bottomExitPos, dirVec) {
+      const nozzleGeom = new THREE.CylinderGeometry(0.068, 0.074, 0.025, 24);
+      const nozzleMesh = new THREE.Mesh(nozzleGeom, bottomNozzleMat);
+      nozzleMesh.position.copy(bottomExitPos);
+      nozzleMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dirVec);
+      scene.add(nozzleMesh);
+
+      // Soft spherical aerosol source glow right at the 45° bottom outlet (NOT a targeted cone beam!)
+      const puffMat = new THREE.SpriteMaterial({
+        map: particleTex,
+        color: 0xffffff,
         transparent: true,
         opacity: 0.0,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
+        depthWrite: false
       });
-      const cone = new THREE.Mesh(coneGeom, coneMat);
-      cone.position.copy(bottomExitPos);
-      cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dirVec.clone().normalize());
-      scene.add(cone);
-      return coneMat;
+      const puffSprite = new THREE.Sprite(puffMat);
+      puffSprite.position.copy(bottomExitPos).addScaledVector(dirVec, 0.18);
+      puffSprite.scale.set(0.85, 0.85, 1);
+      scene.add(puffSprite);
+      return puffMat;
     }
-    // 45-degree discharge vectors pointing down & inward from the flat bottom of each cylinder
-    const left45Dir = new THREE.Vector3(0.707, -0.707, 0.22).normalize();
-    const right45Dir = new THREE.Vector3(-0.707, -0.707, 0.22).normalize();
-    const leftPlumeMat = add45DegBottomPlume(leftBottomExit, left45Dir);
-    const rightPlumeMat = add45DegBottomPlume(rightBottomExit, right45Dir);
+    const leftPlumeMat = addWhiteBottomNozzleAndGlow(leftBottomExit, left45Dir);
+    const rightPlumeMat = addWhiteBottomNozzleAndGlow(rightBottomExit, right45Dir);
 
-    // Total-Flooding Volumetric Room Fog Box (fills the entire room during Stage 3 total flooding)
-    const roomFogGeom = new THREE.BoxGeometry(4.05, 2.22, 3.10);
+    // Total-Flooding Volumetric Room Fog Box (fills the ENTIRE room uniformly from floor to ceiling, wall to wall)
+    const roomFogGeom = new THREE.BoxGeometry(4.06, 2.24, 3.12);
     const roomFogMat = new THREE.MeshBasicMaterial({
-      color: 0xf1f5f9,
+      color: 0xf8fafc,
       transparent: true,
       opacity: 0.0,
       side: THREE.DoubleSide,
@@ -362,10 +372,10 @@
     }
 
     // 5. TOTAL-FLOODING Aerosol Particle System:
-    //    - 180 Jet Stream Particles emerging from the flat bottom of both 45°-tilted cylinders
-    //    - 280 Total-Flooding Room Cloud Particles filling the ENTIRE ROOM volume (x: 6.45..10.35, y: 0.15..2.25, z: -1.45..1.55)
-    const JET_COUNT = 180;
-    const FLOOD_COUNT = 280;
+    //    - 220 Wide Dispersion Particles emerging from the flat WHITE bottom of both 45°-tilted cylinders
+    //    - 420 Total-Flooding Room Cloud Particles filling the ENTIRE ROOM volume (x: 6.45..10.35, y: 0.15..2.25, z: -1.45..1.55)
+    const JET_COUNT = 220;
+    const FLOOD_COUNT = 420;
     const sprayGroup = new THREE.Group();
     scene.add(sprayGroup);
     const jetParticles = [];
@@ -373,7 +383,7 @@
       const fromLeft = (i % 2 === 0);
       const mat = new THREE.SpriteMaterial({
         map: particleTex,
-        color: 0xf8fafc,
+        color: 0xffffff,
         transparent: true,
         opacity: 0,
         depthWrite: false
@@ -384,10 +394,11 @@
         sprite: sp,
         fromLeft,
         t: Math.random(),
-        speed: 0.55 + Math.random() * 0.40,
-        coneX: (Math.random() - 0.5) * 1.4,
-        coneY: (Math.random() - 0.5) * 1.1,
-        coneZ: (Math.random() - 0.5) * 1.8
+        speed: 0.48 + Math.random() * 0.38,
+        // Wide omni-directional dispersion into the entire room (NOT a narrow targeted beam!)
+        coneX: (Math.random() - 0.5) * 2.8,
+        coneY: (Math.random() - 0.35) * 2.1,
+        coneZ: (Math.random() - 0.40) * 2.9
       });
     }
 
@@ -395,18 +406,18 @@
     for (let i = 0; i < FLOOD_COUNT; i++) {
       const mat = new THREE.SpriteMaterial({
         map: particleTex,
-        color: 0xf1f5f9,
+        color: 0xf8fafc,
         transparent: true,
         opacity: 0,
         depthWrite: false
       });
       const sp = new THREE.Sprite(mat);
-      // Distribute across the WHOLE ROOM (x: 6.50..10.32, y: 0.20..2.20, z: -1.40..1.50)
-      const rx = 6.52 + Math.random() * 3.78;
-      const ry = 0.22 + Math.random() * 1.98;
-      const rz = -1.40 + Math.random() * 2.85;
+      // Distribute across the WHOLE ROOM (x: 6.48..10.34, y: 0.18..2.22, z: -1.42..1.52)
+      const rx = 6.48 + Math.random() * 3.86;
+      const ry = 0.18 + Math.random() * 2.04;
+      const rz = -1.42 + Math.random() * 2.94;
       sp.position.set(rx, ry, rz);
-      const baseScale = 0.48 + Math.random() * 0.45;
+      const baseScale = 0.58 + Math.random() * 0.55;
       sp.scale.set(baseScale, baseScale, 1);
       sprayGroup.add(sp);
       floodParticles.push({
@@ -490,31 +501,28 @@
           const isRightCylPart = (cx > 10.20 && cx < 10.44 && cy > 1.35 && cy < 1.88 && cz > -0.85 && cz < -0.48);
 
           if (isLeftCylPart || isRightCylPart) {
-            // Check if this is the small black bottom knob (cy < 1.435 and small height) -> hide it completely!
-            if (bb.max.y < 1.44 && (bb.max.y - bb.min.y) < 0.06) {
+            // Hide both the small black bottom knob AND the dark vertical wall bracket so ONLY the clean 45° White/Orange Cylinder is visible!
+            const isSmallBottomKnob = bb.max.y < 1.44 && (bb.max.y - bb.min.y) < 0.06;
+            const isDarkVerticalBracket = (bb.min.x < 6.425 || bb.max.x > 10.395) && (bb.max.x - bb.min.x < 0.06);
+            if (isSmallBottomKnob || isDarkVerticalBracket) {
               child.visible = false;
               return;
             }
 
-            // Remove black color from cylinder bottom/top caps (aiStandardSurface27) -> make crisp White/Silver!
+            // Color cylinder bottom/top caps & body pure crisp White (#ffffff) with bright Orange bands (#ff5500) — ZERO black at bottom!
             child.material = child.material.clone();
             if (mName === 'aiStandardSurface28') {
               child.material.color.setHex(0xff5500);
-              child.material.roughness = 0.25;
-            } else if (mName === 'aiStandardSurface29' || mName === 'aiStandardSurface27') {
-              // Keep wall bracket (thin X width right against wall) silver-grey, and cylinder body/bottom pure white!
-              const isWallBracket = (bb.min.x < 6.425 || bb.max.x > 10.395) && (bb.max.x - bb.min.x < 0.06);
-              child.material.color.setHex(isWallBracket ? 0x94a3b8 : 0xffffff);
-              child.material.roughness = 0.20;
-              child.material.metalness = isWallBracket ? 0.5 : 0.15;
+              child.material.roughness = 0.22;
+            } else {
+              child.material.color.setHex(0xffffff);
+              child.material.roughness = 0.18;
+              child.material.metalness = 0.12;
             }
 
-            // Apply 45-degree inward rotation to the cylinder meshes (except the flat wall plate)
-            const isWallPlate = (bb.min.x < 6.425 || bb.max.x > 10.395) && (bb.max.x - bb.min.x < 0.06);
-            if (!isWallPlate) {
-              geom.applyMatrix4(isLeftCylPart ? leftRotMat : rightRotMat);
-              geom.computeVertexNormals();
-            }
+            // Apply 45-degree inward rotation to the entire cylinder assembly
+            geom.applyMatrix4(isLeftCylPart ? leftRotMat : rightRotMat);
+            geom.computeVertexNormals();
             child.visible = false;
             toAdd.push(new THREE.Mesh(geom, child.material));
             return;
@@ -696,9 +704,9 @@
         panelRedLightMesh.material.emissiveIntensity = redBlink ? 2.5 : 0;
       }
 
-      // 3. Blink Both 45° Cylinder Indicator Lights
-      cylBeaconMat.emissiveIntensity = cylBlink ? 4.0 : 0.1;
-      cylBeaconMat.color.setHex(cylBlink ? 0xff4500 : (elapsed >= 12.8 ? 0x10b981 : 0x331100));
+      // 3. Blink Both 45° Cylinder Indicator Lights (Bright Orange/Emerald — Never Dark/Black!)
+      cylBeaconMat.emissiveIntensity = cylBlink ? 4.5 : 0.45;
+      cylBeaconMat.color.setHex(cylBlink ? 0xff4500 : (elapsed >= 12.8 ? 0x10b981 : 0xff6600));
 
       // 4. Update Smoke & Fire Particles rising from Table Center Box
       for (const p of smokeParticles) {
@@ -732,9 +740,9 @@
         }
       }
 
-      // 5. Update 45° Bottom Discharge Plumes & Total-Flooding Whole-Room Aerosol Cloud
-      leftPlumeMat.opacity = jetIntensity * 0.22;
-      rightPlumeMat.opacity = jetIntensity * 0.22;
+      // 5. Update 45° Bottom Discharge & Total-Flooding Whole-Room Aerosol Cloud (Fills ENTIRE Room, NOT targeted only!)
+      leftPlumeMat.opacity = jetIntensity * 0.55;
+      rightPlumeMat.opacity = jetIntensity * 0.55;
       roomFogMat.opacity = floodIntensity * 0.22;
 
       for (const jp of jetParticles) {
@@ -748,31 +756,31 @@
 
         const start = jp.fromLeft ? leftBottomExit : rightBottomExit;
         const dir = jp.fromLeft ? left45Dir : right45Dir;
-        const dist = jp.t * 2.2;
-        const x = start.x + dir.x * dist + jp.coneX * jp.t;
-        const y = Math.max(0.15, start.y + dir.y * dist + jp.coneY * jp.t);
-        const z = start.z + dir.z * dist + jp.coneZ * jp.t;
+        const dist = jp.t * 2.1;
+        const x = Math.min(10.30, Math.max(6.50, start.x + dir.x * dist + jp.coneX * jp.t));
+        const y = Math.min(2.20, Math.max(0.18, start.y + dir.y * dist + jp.coneY * jp.t));
+        const z = Math.min(1.50, Math.max(-1.42, start.z + dir.z * dist + jp.coneZ * jp.t));
         jp.sprite.position.set(x, y, z);
 
-        const sc = 0.12 + jp.t * 0.48;
+        const sc = 0.20 + jp.t * 0.72;
         jp.sprite.scale.set(sc, sc, 1);
-        jp.sprite.material.opacity = Math.sin(jp.t * Math.PI) * 0.55 * jetIntensity;
+        jp.sprite.material.opacity = Math.sin(jp.t * Math.PI) * 0.42 * jetIntensity;
       }
 
-      // Total Room Flooding Cloud — fills the entire room volume!
+      // Total Room Flooding Cloud — fills the ENTIRE ROOM volume from floor to ceiling, wall to wall!
       for (const fp of floodParticles) {
         if (floodIntensity <= 0.01) {
           fp.sprite.material.opacity = 0;
           continue;
         }
-        // Wave front expands outward from the 45° cylinders to fill the whole room
-        const reach = Math.max(0, Math.min(1, (floodIntensity * 3.8) - fp.distFromTopCorners * 0.45));
+        // Wave front expands rapidly from the 45° bottom outlets to fill the whole room
+        const reach = Math.max(0, Math.min(1, (floodIntensity * 4.2) - fp.distFromTopCorners * 0.35));
         fp.sprite.position.set(
           fp.baseX + Math.sin(now * 0.0018 + fp.phase) * 0.08,
           fp.baseY + Math.cos(now * 0.0015 + fp.phase) * 0.06,
           fp.baseZ + Math.sin(now * 0.0016 - fp.phase) * 0.08
         );
-        fp.sprite.material.opacity = reach * floodIntensity * 0.34;
+        fp.sprite.material.opacity = reach * floodIntensity * 0.30;
       }
 
       controls.update();
