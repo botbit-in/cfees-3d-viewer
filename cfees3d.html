@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>DRDO CFEES (CAFES) — Interactive 3D Animated Fire Suppression Demo | autoAbode</title>
+  <title>DRDO CFEES (CAFES) — 45° Aerosol Cylinders & Total Room Flooding 3D Simulation | autoAbode</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
     body, html {
@@ -62,7 +62,7 @@
     .controls {
       position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
       z-index: 20; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
-      width: 96%; max-width: 560px;
+      width: 96%; max-width: 580px;
       background: rgba(15, 23, 42, 0.9);
       padding: 8px 10px; border-radius: 16px;
       border: 1px solid rgba(148, 163, 184, 0.25);
@@ -95,11 +95,11 @@
   <div class="header">
     <div class="header-top">
       <div>
-        <div class="title">DRDO CFEES — CAFES Automated Aerosol Suppression (3D Live Animation)</div>
-        <div class="sub">Transparent Ceiling • +10% White/Orange Cylinders • Motor Spin ➔ Fire/Smoke ➔ Dual Aerosol Spray</div>
+        <div class="title">DRDO CFEES — CAFES Total-Flooding Aerosol Fire Suppression (3D Live Animation)</div>
+        <div class="sub">Transparent Ceiling • 45°-Angled White/Orange Cylinders (No Black Bottom) • Bottom Discharge ➔ Total Room Flooding</div>
       </div>
     </div>
-    <div class="status-pill" id="statusBanner">⚙️ LOADING 3D MOTOR LAB & CAFES ANIMATION...</div>
+    <div class="status-pill" id="statusBanner">⚙️ LOADING 3D MOTOR LAB & CAFES TOTAL-FLOODING SIMULATION...</div>
   </div>
 
   <div class="loader-overlay" id="loader">
@@ -113,11 +113,11 @@
   <div id="canvas-container"></div>
 
   <div class="controls">
-    <button class="btn fire" onclick="restartCycle()">🔥 Replay Fire & Spray</button>
+    <button class="btn fire" onclick="restartCycle()">🔥 Replay Fire & Total Flooding</button>
     <button class="btn" onclick="setCameraView('front')">Front View</button>
     <button class="btn" onclick="setCameraView('top')">Top View (Thru Ceiling)</button>
-    <button class="btn" onclick="setCameraView('left')">Left Cylinder</button>
-    <button class="btn" onclick="setCameraView('right')">Right Cylinder</button>
+    <button class="btn" onclick="setCameraView('left')">Left 45° Cylinder</button>
+    <button class="btn" onclick="setCameraView('right')">Right 45° Cylinder</button>
     <button class="btn active" id="ceilBtn" onclick="toggleCeiling()">Ceiling: Transparent</button>
   </div>
 
@@ -135,7 +135,6 @@
     const scene = new THREE.Scene();
     const isPortrait = () => window.innerWidth < window.innerHeight;
     const camera = new THREE.PerspectiveCamera(isPortrait() ? 60 : 44, window.innerWidth / window.innerHeight, 0.1, 100);
-    // Center of room in native Maya coordinates is (8.41, 1.18, 0.05)
     const roomCenter = new THREE.Vector3(8.41, 1.18, 0.05);
 
     function applyResponsiveCamera(view = 'front') {
@@ -158,11 +157,11 @@
         camera.position.set(8.41, yDist, 1.65);
         controls.target.set(8.41, 1.10, -0.05);
       } else if (view === 'left') {
-        camera.position.set(9.5, 2.05, 2.4);
-        controls.target.set(7.1, 1.35, -0.25);
+        camera.position.set(8.8, 1.95, 1.5);
+        controls.target.set(6.55, 1.55, -0.60);
       } else if (view === 'right') {
-        camera.position.set(7.3, 2.05, 2.4);
-        controls.target.set(9.7, 1.35, -0.25);
+        camera.position.set(8.0, 1.95, 1.5);
+        controls.target.set(10.25, 1.55, -0.60);
       }
     }
 
@@ -178,12 +177,12 @@
     controls.target.copy(roomCenter);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.minDistance = 0.8;
+    controls.minDistance = 0.6;
     controls.maxDistance = 15;
     applyResponsiveCamera('front');
     controls.update();
 
-    // Rich Studio Lighting
+    // Studio Lighting
     scene.add(new THREE.AmbientLight(0xffffff, 1.55));
     const dir1 = new THREE.DirectionalLight(0xffffff, 1.8);
     dir1.position.set(12, 18, 15);
@@ -192,14 +191,14 @@
     dir2.position.set(4, 10, -10);
     scene.add(dir2);
 
-    // Create soft radial particle texture for Smoke, Fire & Aerosol Mist
+    // Soft radial particle texture for Smoke, Fire & Total-Flooding Aerosol Mist
     function createSoftParticleTexture() {
       const c = document.createElement('canvas');
       c.width = 64; c.height = 64;
       const ctx = c.getContext('2d');
       const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
       g.addColorStop(0, 'rgba(255,255,255,1)');
-      g.addColorStop(0.4, 'rgba(255,255,255,0.7)');
+      g.addColorStop(0.45, 'rgba(255,255,255,0.75)');
       g.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, 64, 64);
@@ -208,26 +207,25 @@
     const particleTex = createSoftParticleTexture();
 
     // Key Coordinates in Motor Lab:
-    // Table Center Box: (8.335, 1.085, 0.30), Top surface y = 1.25
-    // Left Extinguisher Bottom Nozzle: (6.51, 1.37, -0.73)
-    // Right Extinguisher Bottom Nozzle: (10.32, 1.37, -0.73)
+    // Table Center Box: (8.335, 1.085, 0.30), Top surface y = 1.24
+    // Left 45°-Tilted Cylinder Pivot: (6.52, 1.62, -0.66) -> Bottom Flat Face at (6.67, 1.47, -0.61) pointing 45° down-right
+    // Right 45°-Tilted Cylinder Pivot: (10.30, 1.62, -0.66) -> Bottom Flat Face at (10.15, 1.47, -0.61) pointing 45° down-left
     const centerBoxPos = new THREE.Vector3(8.335, 1.24, 0.30);
-    const leftNozzlePos = new THREE.Vector3(6.51, 1.37, -0.73);
-    const rightNozzlePos = new THREE.Vector3(10.32, 1.37, -0.73);
+    const leftCylPivot = new THREE.Vector3(6.52, 1.62, -0.66);
+    const rightCylPivot = new THREE.Vector3(10.30, 1.62, -0.66);
+    const leftBottomExit = new THREE.Vector3(6.66, 1.48, -0.60);
+    const rightBottomExit = new THREE.Vector3(10.16, 1.48, -0.60);
 
     // 1. Moving Parts on Table: Spinning Shaft, Rotor Blades & Center Box Turbine Gear
     const spinningGroup = new THREE.Group();
     spinningGroup.position.set(8.335, 1.10, 0.30);
     scene.add(spinningGroup);
 
-    // Horizontal Chrome Drive Shaft connecting Left Motor -> Center Box -> Right Generator
     const shaftGeom = new THREE.CylinderGeometry(0.032, 0.032, 1.05, 20);
     shaftGeom.rotateZ(Math.PI / 2);
     const shaftMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
-    const shaftMesh = new THREE.Mesh(shaftGeom, shaftMat);
-    spinningGroup.add(shaftMesh);
+    spinningGroup.add(new THREE.Mesh(shaftGeom, shaftMat));
 
-    // High-visibility Rotating Coupling Fins & Center Box Rotor Wheel (so rotation is super clear!)
     const finMat1 = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, metalness: 0.5, roughness: 0.3 });
     const finMat2 = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6, roughness: 0.25 });
     for (const xOff of [-0.32, 0.0, 0.32]) {
@@ -249,15 +247,15 @@
       }
     }
 
-    // Also add a top visible spinning turbine/gear rotor right on top of the Center Box
     const topRotorGroup = new THREE.Group();
     topRotorGroup.position.set(8.335, 1.26, 0.26);
     scene.add(topRotorGroup);
-    const gearRing = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24),
-      new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.3 })
+    topRotorGroup.add(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.11, 0.11, 0.03, 24),
+        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.3 })
+      )
     );
-    topRotorGroup.add(gearRing);
     for (let i = 0; i < 3; i++) {
       const bar = new THREE.Mesh(
         new THREE.BoxGeometry(0.20, 0.04, 0.035),
@@ -267,14 +265,14 @@
       topRotorGroup.add(bar);
     }
 
-    // 2. Blinking Red Fault Light on the Center Box + Panel Red Light + PointLight
+    // 2. Blinking Red Fault Light on the Center Box
     const boxBeaconMat = new THREE.MeshStandardMaterial({
       color: 0xff0000,
       emissive: 0xff0000,
       emissiveIntensity: 0,
       roughness: 0.2
     });
-    const boxBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.048, 20, 20), boxBeaconMat);
+    const boxBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.045, 20, 20), boxBeaconMat);
     boxBeacon.position.set(8.335, 1.27, 0.40);
     scene.add(boxBeacon);
 
@@ -282,36 +280,28 @@
     boxAlertLight.position.set(8.335, 1.38, 0.38);
     scene.add(boxAlertLight);
 
-    // 3. Detection Strobe Lights on BOTH Extinguisher Cylinders (Left & Right)
+    // 3. Detection Indicator Lights on BOTH 45°-Angled Cylinders (Top Cap Indicator LEDs, NO black bottom!)
     const cylBeaconMat = new THREE.MeshStandardMaterial({
       color: 0xff3300,
       emissive: 0xff3300,
       emissiveIntensity: 0,
       roughness: 0.15
     });
-    const leftCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 16), cylBeaconMat);
-    leftCylBeacon.position.set(6.53, 1.62, -0.60);
+    const leftCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.034, 16, 16), cylBeaconMat);
+    leftCylBeacon.position.set(6.42, 1.74, -0.58);
     scene.add(leftCylBeacon);
 
-    const rightCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 16), cylBeaconMat);
-    rightCylBeacon.position.set(10.30, 1.62, -0.60);
+    const rightCylBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.034, 16, 16), cylBeaconMat);
+    rightCylBeacon.position.set(10.40, 1.74, -0.58);
     scene.add(rightCylBeacon);
 
-    // Bottom Nozzle Cones on both Cylinders pointing directly at Table Center Box
-    const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
-    function addAimedNozzle(startPos, targetPos) {
-      const dir = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
-      const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.045, 0.10, 16), nozzleMat);
-      noz.position.copy(startPos);
-      noz.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
-      scene.add(noz);
-
-      // Translucent Spray Beam Cone from Cylinder Bottom to Table Center Box
-      const dist = startPos.distanceTo(targetPos);
-      const coneGeom = new THREE.ConeGeometry(0.32, dist, 24, 1, true);
-      coneGeom.translate(0, -dist / 2, 0);
+    // 45° Wide Dispersion Plume Cones coming out from the flat WHITE bottom of both 45°-tilted cylinders
+    function add45DegBottomPlume(bottomExitPos, dirVec) {
+      const len = 1.65;
+      const coneGeom = new THREE.ConeGeometry(0.68, len, 28, 1, true);
+      coneGeom.translate(0, -len / 2, 0);
       const coneMat = new THREE.MeshBasicMaterial({
-        color: 0xe0f2fe,
+        color: 0xf0f9ff,
         transparent: true,
         opacity: 0.0,
         side: THREE.DoubleSide,
@@ -319,16 +309,32 @@
         blending: THREE.AdditiveBlending
       });
       const cone = new THREE.Mesh(coneGeom, coneMat);
-      cone.position.copy(startPos);
-      cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir);
+      cone.position.copy(bottomExitPos);
+      cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dirVec.clone().normalize());
       scene.add(cone);
       return coneMat;
     }
-    const leftSprayConeMat = addAimedNozzle(leftNozzlePos, centerBoxPos);
-    const rightSprayConeMat = addAimedNozzle(rightNozzlePos, centerBoxPos);
+    // 45-degree discharge vectors pointing down & inward from the flat bottom of each cylinder
+    const left45Dir = new THREE.Vector3(0.707, -0.707, 0.22).normalize();
+    const right45Dir = new THREE.Vector3(-0.707, -0.707, 0.22).normalize();
+    const leftPlumeMat = add45DegBottomPlume(leftBottomExit, left45Dir);
+    const rightPlumeMat = add45DegBottomPlume(rightBottomExit, right45Dir);
+
+    // Total-Flooding Volumetric Room Fog Box (fills the entire room during Stage 3 total flooding)
+    const roomFogGeom = new THREE.BoxGeometry(4.05, 2.22, 3.10);
+    const roomFogMat = new THREE.MeshBasicMaterial({
+      color: 0xf1f5f9,
+      transparent: true,
+      opacity: 0.0,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+    const roomFogMesh = new THREE.Mesh(roomFogGeom, roomFogMat);
+    roomFogMesh.position.set(8.41, 1.15, 0.02);
+    scene.add(roomFogMesh);
 
     // 4. 3D Smoke & Fire Particle System coming out of Table Center Box
-    const SMOKE_COUNT = 160;
+    const SMOKE_COUNT = 150;
     const smokeGroup = new THREE.Group();
     scene.add(smokeGroup);
     const smokeParticles = [];
@@ -355,43 +361,82 @@
       });
     }
 
-    // 5. Dual Aerosol Spray Particle System from Bottom of Both Cylinders onto Table Center Box
-    const SPRAY_COUNT = 260;
+    // 5. TOTAL-FLOODING Aerosol Particle System:
+    //    - 180 Jet Stream Particles emerging from the flat bottom of both 45°-tilted cylinders
+    //    - 280 Total-Flooding Room Cloud Particles filling the ENTIRE ROOM volume (x: 6.45..10.35, y: 0.15..2.25, z: -1.45..1.55)
+    const JET_COUNT = 180;
+    const FLOOD_COUNT = 280;
     const sprayGroup = new THREE.Group();
     scene.add(sprayGroup);
-    const sprayParticles = [];
-    for (let i = 0; i < SPRAY_COUNT; i++) {
+    const jetParticles = [];
+    for (let i = 0; i < JET_COUNT; i++) {
       const fromLeft = (i % 2 === 0);
       const mat = new THREE.SpriteMaterial({
         map: particleTex,
-        color: 0xf0f9ff,
+        color: 0xf8fafc,
         transparent: true,
         opacity: 0,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
+        depthWrite: false
       });
       const sp = new THREE.Sprite(mat);
       sprayGroup.add(sp);
-      sprayParticles.push({
+      jetParticles.push({
         sprite: sp,
         fromLeft,
         t: Math.random(),
-        speed: 0.65 + Math.random() * 0.45,
-        spreadX: (Math.random() - 0.5) * 0.26,
-        spreadY: (Math.random() - 0.5) * 0.18,
-        spreadZ: (Math.random() - 0.5) * 0.26
+        speed: 0.55 + Math.random() * 0.40,
+        coneX: (Math.random() - 0.5) * 1.4,
+        coneY: (Math.random() - 0.5) * 1.1,
+        coneZ: (Math.random() - 0.5) * 1.8
       });
     }
 
-    // Load the Motor Lab GLB & Split Top Ceiling into Transparent Glass
+    const floodParticles = [];
+    for (let i = 0; i < FLOOD_COUNT; i++) {
+      const mat = new THREE.SpriteMaterial({
+        map: particleTex,
+        color: 0xf1f5f9,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false
+      });
+      const sp = new THREE.Sprite(mat);
+      // Distribute across the WHOLE ROOM (x: 6.50..10.32, y: 0.20..2.20, z: -1.40..1.50)
+      const rx = 6.52 + Math.random() * 3.78;
+      const ry = 0.22 + Math.random() * 1.98;
+      const rz = -1.40 + Math.random() * 2.85;
+      sp.position.set(rx, ry, rz);
+      const baseScale = 0.48 + Math.random() * 0.45;
+      sp.scale.set(baseScale, baseScale, 1);
+      sprayGroup.add(sp);
+      floodParticles.push({
+        sprite: sp,
+        baseX: rx,
+        baseY: ry,
+        baseZ: rz,
+        baseScale,
+        phase: Math.random() * Math.PI * 2,
+        distFromTopCorners: Math.min(
+          Math.hypot(rx - 6.66, ry - 1.48, rz + 0.60),
+          Math.hypot(rx - 10.16, ry - 1.48, rz + 0.60)
+        )
+      });
+    }
+
+    // Load the Motor Lab GLB, Rotate Both Cylinders to 45 Degrees, Remove Black Bottoms & Split Transparent Ceiling
     const ceilingMeshes = [];
     let panelRedLightMesh = null;
-    let panelGreenLightMesh = null;
-    let ceilingMode = 0; // 0 = Transparent (14%), 1 = Hidden (0%), 2 = Solid (100%)
+    let ceilingMode = 0;
+
+    // Mesh indices for Left Cylinder (13..23) and Right Cylinder (765..775)
+    // Note: Mesh 14 & 766 are the small black bottom protrusions -> hide them!
+    // Note: Mesh 23 & 775 (bottom caps) and Mesh 17 & 769 (top caps) -> color clean White/Silver so NO black at bottom!
+    const leftCylMeshNames = new Set(['13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23']);
+    const rightCylMeshNames = new Set(['765', '766', '767', '768', '769', '770', '771', '772', '773', '774', '775']);
 
     const gltfLoader = new GLTFLoader();
     gltfLoader.load(
-      './media/DRDO_CFEES_CAFES_FullColor_3D.glb?v=2',
+      './media/DRDO_CFEES_CAFES_FullColor_3D.glb?v=3',
       (gltf) => {
         const model = gltf.scene;
         const rootNode = model.children[0];
@@ -404,35 +449,78 @@
         model.updateMatrixWorld(true);
         const toAdd = [];
 
+        // Rotation matrices to tilt Left Cylinder (+45° around Z) & Right Cylinder (-45° around Z)
+        // First undo the slight 21° X tilt (+0.37 rad) and apply exact 45° (Math.PI/4 = 0.7854 rad) inward Z tilt!
+        const leftRotMat = new THREE.Matrix4()
+          .makeTranslation(leftCylPivot.x, leftCylPivot.y, leftCylPivot.z)
+          .multiply(new THREE.Matrix4().makeRotationZ(Math.PI / 4))
+          .multiply(new THREE.Matrix4().makeRotationX(0.36))
+          .multiply(new THREE.Matrix4().makeTranslation(-leftCylPivot.x, -leftCylPivot.y, -leftCylPivot.z));
+
+        const rightRotMat = new THREE.Matrix4()
+          .makeTranslation(rightCylPivot.x, rightCylPivot.y, rightCylPivot.z)
+          .multiply(new THREE.Matrix4().makeRotationZ(-Math.PI / 4))
+          .multiply(new THREE.Matrix4().makeRotationX(0.36))
+          .multiply(new THREE.Matrix4().makeTranslation(-rightCylPivot.x, -rightCylPivot.y, -rightCylPivot.z));
+
         model.traverse((child) => {
           if (!child.isMesh || !child.geometry) return;
           child.updateMatrixWorld(true);
 
           const mName = child.material?.name || '';
           if (mName === 'aiStandardSurface23') panelRedLightMesh = child;
-          if (mName === 'aiStandardSurface24') panelGreenLightMesh = child;
 
-          // Make Center Box slightly translucent so spinning internal rotor is clearly visible inside!
+          // Make Center Box slightly translucent so spinning internal rotor is clearly visible inside
           if (mName === 'aiStandardSurface5') {
             child.material = child.material.clone();
             child.material.transparent = true;
             child.material.opacity = 0.76;
           }
 
-          // Make cylinder white & orange super crisp
-          if (mName === 'aiStandardSurface29') {
+          // Compute world bounding box center to identify Left & Right Cylinder parts accurately
+          const geom = child.geometry.index ? child.geometry.toNonIndexed() : child.geometry.clone();
+          geom.applyMatrix4(child.matrixWorld);
+          geom.computeBoundingBox();
+          const bb = geom.boundingBox;
+          const cx = (bb.min.x + bb.max.x) / 2;
+          const cy = (bb.min.y + bb.max.y) / 2;
+          const cz = (bb.min.z + bb.max.z) / 2;
+
+          const isLeftCylPart = (cx > 6.38 && cx < 6.62 && cy > 1.35 && cy < 1.88 && cz > -0.85 && cz < -0.48);
+          const isRightCylPart = (cx > 10.20 && cx < 10.44 && cy > 1.35 && cy < 1.88 && cz > -0.85 && cz < -0.48);
+
+          if (isLeftCylPart || isRightCylPart) {
+            // Check if this is the small black bottom knob (cy < 1.435 and small height) -> hide it completely!
+            if (bb.max.y < 1.44 && (bb.max.y - bb.min.y) < 0.06) {
+              child.visible = false;
+              return;
+            }
+
+            // Remove black color from cylinder bottom/top caps (aiStandardSurface27) -> make crisp White/Silver!
             child.material = child.material.clone();
-            child.material.color.setHex(0xffffff);
-            child.material.roughness = 0.22;
-          } else if (mName === 'aiStandardSurface28') {
-            child.material = child.material.clone();
-            child.material.color.setHex(0xff5500);
-            child.material.roughness = 0.28;
+            if (mName === 'aiStandardSurface28') {
+              child.material.color.setHex(0xff5500);
+              child.material.roughness = 0.25;
+            } else if (mName === 'aiStandardSurface29' || mName === 'aiStandardSurface27') {
+              // Keep wall bracket (thin X width right against wall) silver-grey, and cylinder body/bottom pure white!
+              const isWallBracket = (bb.min.x < 6.425 || bb.max.x > 10.395) && (bb.max.x - bb.min.x < 0.06);
+              child.material.color.setHex(isWallBracket ? 0x94a3b8 : 0xffffff);
+              child.material.roughness = 0.20;
+              child.material.metalness = isWallBracket ? 0.5 : 0.15;
+            }
+
+            // Apply 45-degree inward rotation to the cylinder meshes (except the flat wall plate)
+            const isWallPlate = (bb.min.x < 6.425 || bb.max.x > 10.395) && (bb.max.x - bb.min.x < 0.06);
+            if (!isWallPlate) {
+              geom.applyMatrix4(isLeftCylPart ? leftRotMat : rightRotMat);
+              geom.computeVertexNormals();
+            }
+            child.visible = false;
+            toAdd.push(new THREE.Mesh(geom, child.material));
+            return;
           }
 
           // Check if mesh has ceiling vertices (y >= 2.24)
-          const geom = child.geometry.index ? child.geometry.toNonIndexed() : child.geometry.clone();
-          geom.applyMatrix4(child.matrixWorld);
           const pos = geom.attributes.position;
           let hasCeiling = false;
           let hasLower = false;
@@ -442,7 +530,6 @@
           }
 
           if (hasCeiling && !hasLower) {
-            // Entire mesh is part of the top ceiling!
             child.material = child.material.clone();
             child.material.transparent = true;
             child.material.opacity = 0.14;
@@ -450,7 +537,6 @@
             child.material.color.setHex(0xdbeafe);
             ceilingMeshes.push(child);
           } else if (hasCeiling && hasLower) {
-            // Split ceiling triangles (all 3 verts y >= 2.24) from wall/floor triangles
             const norm = geom.attributes.normal;
             const ceilPos = [], ceilNorm = [];
             const wallPos = [], wallNorm = [];
@@ -504,17 +590,13 @@
       }
     );
 
-    // 16-Second Automated 4-Stage CAFES Animation Loop
-    // 0.0 - 3.0s: Stage 1 — Motor Spinning Normal
-    // 3.0 - 6.5s: Stage 2 — Center Box Overheats -> Red Light Blinks + Smoke & Fire Erupt from Center Box
-    // 6.5 - 12.5s: Stage 3 — Both Cylinders Detect -> Blink Lights -> Spray Aerosol from Bottom Directly onto Table Center Box -> Fire/Smoke Gradually Extinguish
-    // 12.5 - 16.0s: Stage 4 — Aerosol Spray Stops & Table Fire/Smoke Completely Stopped (Green Safe Status)
+    // 16-Second Automated 4-Stage CAFES Total-Flooding Loop
     let cycleStart = performance.now();
     const CYCLE_DURATION = 16.0;
-
     let currentView = 'front';
+
     window.restartCycle = () => {
-      cycleStart = performance.now() - 2800; // Jump straight to Fire/Smoke & Spray!
+      cycleStart = performance.now() - 2800;
     };
     window.setAnimTime = (sec) => {
       cycleStart = performance.now() - sec * 1000;
@@ -557,22 +639,20 @@
 
       const elapsed = ((now - cycleStart) / 1000) % CYCLE_DURATION;
 
-      // Stage intensities
       let motorSpeed = 14.0;
       let smokeIntensity = 0.0;
       let fireIntensity = 0.0;
       let redBlink = false;
       let cylBlink = false;
-      let sprayIntensity = 0.0;
+      let jetIntensity = 0.0;
+      let floodIntensity = 0.0;
 
       if (elapsed < 3.0) {
-        // STAGE 1: Normal Motor Spin
         motorSpeed = 16.0;
         statusBanner.textContent = '⚙️ STAGE 1/4: MOTOR SPINNING IN CENTER BOX — NORMAL OPERATION';
         statusBanner.style.borderColor = '#38bdf8';
         statusBanner.style.background = 'rgba(15, 23, 42, 0.92)';
       } else if (elapsed < 6.5) {
-        // STAGE 2: Red Light Blinks + Smoke & Fire Erupt from Table Center Box
         motorSpeed = 8.0;
         const p = Math.min(1, (elapsed - 3.0) / 1.5);
         smokeIntensity = p;
@@ -581,25 +661,24 @@
         statusBanner.textContent = '🔥 STAGE 2/4: OVERHEAT ALARM! RED LIGHT BLINKING & SMOKE/FIRE FROM CENTER BOX';
         statusBanner.style.borderColor = '#ef4444';
         statusBanner.style.background = 'rgba(127, 29, 29, 0.88)';
-      } else if (elapsed < 12.5) {
-        // STAGE 3: Both Cylinders Detect -> Blink Lights -> Spray Aerosol Directly onto Table -> Fire/Smoke Stop
+      } else if (elapsed < 12.8) {
         motorSpeed = 2.0;
         redBlink = Math.sin(now * 0.025) > 0;
         cylBlink = Math.sin(now * 0.035) > 0;
-        sprayIntensity = elapsed < 11.8 ? 1.0 : Math.max(0, (12.5 - elapsed) / 0.7);
-        // Fire dies out by t=10.5s, Smoke dies out by t=11.8s
-        fireIntensity = Math.max(0, 1.0 - (elapsed - 6.5) / 3.8);
-        smokeIntensity = Math.max(0, 1.0 - (elapsed - 6.5) / 5.0);
-        statusBanner.textContent = '🧯 STAGE 3/4: BOTH CYLINDERS DETECT FIRE • BLINKING & SPRAYING AEROSOL ONTO TABLE!';
+        // 45° Bottom Discharge + Total Room Flooding fills the entire room!
+        jetIntensity = elapsed < 11.8 ? 1.0 : Math.max(0, (12.8 - elapsed) / 1.0);
+        const floodRamp = Math.min(1.0, (elapsed - 6.5) / 1.8);
+        const floodFade = elapsed < 11.5 ? 1.0 : Math.max(0, (12.8 - elapsed) / 1.3);
+        floodIntensity = floodRamp * floodFade;
+
+        fireIntensity = Math.max(0, 1.0 - (elapsed - 6.5) / 3.2);
+        smokeIntensity = Math.max(0, 1.0 - (elapsed - 6.5) / 4.2);
+        statusBanner.textContent = '🧯 STAGE 3/4: 45° CYLINDERS DISCHARGE FROM BOTTOM • TOTAL ROOM FLOODING SUPPRESSION!';
         statusBanner.style.borderColor = '#f97316';
         statusBanner.style.background = 'rgba(154, 52, 18, 0.90)';
       } else {
-        // STAGE 4: Spray Stops & Fire/Smoke Completely Stopped
         motorSpeed = 0.0;
-        smokeIntensity = 0.0;
-        fireIntensity = 0.0;
-        sprayIntensity = 0.0;
-        statusBanner.textContent = '✅ STAGE 4/4: TABLE FIRE & SMOKE EXTINGUISHED — AEROSOL SPRAY STOPPED (SAFE)';
+        statusBanner.textContent = '✅ STAGE 4/4: TOTAL FLOODING COMPLETE — FIRE EXTINGUISHED & AEROSOL CLEARED (SAFE)';
         statusBanner.style.borderColor = '#10b981';
         statusBanner.style.background = 'rgba(6, 78, 59, 0.88)';
       }
@@ -610,16 +689,16 @@
 
       // 2. Blink Red Light on Center Box & Panel
       boxBeaconMat.emissiveIntensity = redBlink ? 3.5 : 0.1;
-      boxBeaconMat.color.setHex(redBlink ? 0xff1100 : (elapsed >= 12.5 ? 0x10b981 : 0x550000));
+      boxBeaconMat.color.setHex(redBlink ? 0xff1100 : (elapsed >= 12.8 ? 0x10b981 : 0x550000));
       boxAlertLight.intensity = redBlink ? 3.0 : (fireIntensity * 1.8);
       if (panelRedLightMesh && panelRedLightMesh.material) {
         panelRedLightMesh.material.emissive = new THREE.Color(redBlink ? 0xff0000 : 0x000000);
         panelRedLightMesh.material.emissiveIntensity = redBlink ? 2.5 : 0;
       }
 
-      // 3. Blink Both Extinguisher Cylinder Strobe Lights
+      // 3. Blink Both 45° Cylinder Indicator Lights
       cylBeaconMat.emissiveIntensity = cylBlink ? 4.0 : 0.1;
-      cylBeaconMat.color.setHex(cylBlink ? 0xff4500 : (elapsed >= 12.5 ? 0x10b981 : 0x331100));
+      cylBeaconMat.color.setHex(cylBlink ? 0xff4500 : (elapsed >= 12.8 ? 0x10b981 : 0x331100));
 
       // 4. Update Smoke & Fire Particles rising from Table Center Box
       for (const p of smokeParticles) {
@@ -648,34 +727,52 @@
         if (p.isFire) {
           p.sprite.material.color.setHSL(0.04 + (1 - p.age) * 0.08, 1.0, 0.55);
         } else {
-          // Turn dark grey smoke lighter as aerosol suppresses it
-          const lightness = sprayIntensity > 0.2 ? 0.55 : 0.18;
+          const lightness = floodIntensity > 0.2 ? 0.75 : 0.18;
           p.sprite.material.color.setHSL(0, 0, lightness);
         }
       }
 
-      // 5. Update Dual Aerosol Spray Streams from Bottom of Both Cylinders onto Table Center Box
-      leftSprayConeMat.opacity = sprayIntensity * 0.16;
-      rightSprayConeMat.opacity = sprayIntensity * 0.16;
+      // 5. Update 45° Bottom Discharge Plumes & Total-Flooding Whole-Room Aerosol Cloud
+      leftPlumeMat.opacity = jetIntensity * 0.22;
+      rightPlumeMat.opacity = jetIntensity * 0.22;
+      roomFogMat.opacity = floodIntensity * 0.22;
 
-      for (const sp of sprayParticles) {
-        sp.t += sp.speed * dt;
-        if (sp.t > 1.0) sp.t -= 1.0;
+      for (const jp of jetParticles) {
+        jp.t += jp.speed * dt;
+        if (jp.t > 1.0) jp.t -= 1.0;
 
-        if (sprayIntensity <= 0.01) {
-          sp.sprite.material.opacity = 0;
+        if (jetIntensity <= 0.01) {
+          jp.sprite.material.opacity = 0;
           continue;
         }
 
-        const start = sp.fromLeft ? leftNozzlePos : rightNozzlePos;
-        const x = THREE.MathUtils.lerp(start.x, centerBoxPos.x + sp.spreadX, sp.t);
-        const y = THREE.MathUtils.lerp(start.y, centerBoxPos.y - 0.05 + sp.spreadY, sp.t);
-        const z = THREE.MathUtils.lerp(start.z, centerBoxPos.z + sp.spreadZ, sp.t);
-        sp.sprite.position.set(x, y, z);
+        const start = jp.fromLeft ? leftBottomExit : rightBottomExit;
+        const dir = jp.fromLeft ? left45Dir : right45Dir;
+        const dist = jp.t * 2.2;
+        const x = start.x + dir.x * dist + jp.coneX * jp.t;
+        const y = Math.max(0.15, start.y + dir.y * dist + jp.coneY * jp.t);
+        const z = start.z + dir.z * dist + jp.coneZ * jp.t;
+        jp.sprite.position.set(x, y, z);
 
-        const sc = 0.08 + sp.t * 0.28;
-        sp.sprite.scale.set(sc, sc, 1);
-        sp.sprite.material.opacity = Math.sin(sp.t * Math.PI) * 0.65 * sprayIntensity;
+        const sc = 0.12 + jp.t * 0.48;
+        jp.sprite.scale.set(sc, sc, 1);
+        jp.sprite.material.opacity = Math.sin(jp.t * Math.PI) * 0.55 * jetIntensity;
+      }
+
+      // Total Room Flooding Cloud — fills the entire room volume!
+      for (const fp of floodParticles) {
+        if (floodIntensity <= 0.01) {
+          fp.sprite.material.opacity = 0;
+          continue;
+        }
+        // Wave front expands outward from the 45° cylinders to fill the whole room
+        const reach = Math.max(0, Math.min(1, (floodIntensity * 3.8) - fp.distFromTopCorners * 0.45));
+        fp.sprite.position.set(
+          fp.baseX + Math.sin(now * 0.0018 + fp.phase) * 0.08,
+          fp.baseY + Math.cos(now * 0.0015 + fp.phase) * 0.06,
+          fp.baseZ + Math.sin(now * 0.0016 - fp.phase) * 0.08
+        );
+        fp.sprite.material.opacity = reach * floodIntensity * 0.34;
       }
 
       controls.update();
@@ -684,8 +781,7 @@
     requestAnimationFrame(animate);
 
     window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
+      applyResponsiveCamera(currentView);
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
   </script>
